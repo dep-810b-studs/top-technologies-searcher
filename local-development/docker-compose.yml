@@ -1,58 +1,31 @@
-version: "3"
+version: '3'
 
 services:
   namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
     container_name: namenode
-    restart: always
-    ports:
-      - 9870:9870
-      - 9000:9000
     volumes:
-      - hadoop_namenode:/hadoop/dfs/name
+      - ./hdfs/namenode:/hadoop/dfs/name
     environment:
-      - CLUSTER_NAME=test
+      - CLUSTER_NAME=hive
     env_file:
       - ./hadoop.env
+    ports:
+      - "50070:50070"
 
-  datanode1:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode1
-    restart: always
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
     volumes:
-      - hadoop_datanode1:/hadoop/dfs/data
-    environment:
-      SERVICE_PRECONDITION: "namenode:9870"
+      - ./hdfs/datanode:/hadoop/dfs/data
     env_file:
       - ./hadoop.env
-    ports:
-      - "50075:50075"  
-
-  datanode2:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode2
-    restart: always
-    volumes:
-      - hadoop_datanode2:/hadoop/dfs/data
     environment:
-      SERVICE_PRECONDITION: "namenode:9870"
-    env_file:
-      - ./hadoop.env
+      SERVICE_PRECONDITION: "namenode:50070"
+    depends_on:
+      - namenode
     ports:
-      - "50076:50075"  
-
-  datanode3:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode3
-    restart: always
-    volumes:
-      - hadoop_datanode3:/hadoop/dfs/data
-    environment:
-      SERVICE_PRECONDITION: "namenode:9870"
-    env_file:
-      - ./hadoop.env
-    ports:
-      - "50077:50075"  
+      - "50075:50075"
 
   hive-server:
     image: bde2020/hive:2.3.2-postgresql-metastore
@@ -76,7 +49,7 @@ services:
       - ./hadoop.env
     command: /opt/hive/bin/hive --service metastore
     environment:
-      SERVICE_PRECONDITION: "namenode:50070 datanode1:50075 datanode2:50076 datanode3:50077 hive-metastore-postgresql:5432"
+      SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"
     depends_on:
       - hive-metastore-postgresql
     ports:
@@ -86,14 +59,6 @@ services:
     image: bde2020/hive-metastore-postgresql:2.3.0
     container_name: hive-metastore-postgresql
     volumes:
-      - ./metastore-postgresql/postgresql/data:/var/lib/postgresql/data
+      - ./metastore-postgresql/postgresql/data:/var/lib/postgresql
     depends_on:
-      - datanode1
-      - datanode2
-      - datanode3 
-  
-volumes:
-  hadoop_namenode:
-  hadoop_datanode1:
-  hadoop_datanode2:
-  hadoop_datanode3:
+      - datanode
